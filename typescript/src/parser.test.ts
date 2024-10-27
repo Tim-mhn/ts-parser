@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Parser, VariableDeclaration } from "./parser";
+import { AST, Parser, VariableDeclaration } from "./parser";
 
 describe("AST Parser", () => {
   let parser!: Parser;
@@ -15,7 +15,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "const",
-        variableName: "foo",
+        identifier: { name: "foo" },
         value: {
           type: "NumericLiteral",
           value: 1,
@@ -29,7 +29,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "let",
-        variableName: "bar",
+        identifier: { name: "bar" },
         value: {
           type: "NumericLiteral",
           value: 3.1,
@@ -43,7 +43,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "var",
-        variableName: "baz",
+        identifier: { name: "baz" },
         value: {
           type: "NumericLiteral",
           value: 1,
@@ -57,10 +57,24 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "var",
-        variableName: "baz",
+        identifier: { name: "baz" },
         value: {
           type: "NumericLiteral",
           value: -1,
+        },
+      });
+    });
+
+    it("supports type annotations", () => {
+      const ast = parser.parse("const foo: number = 1");
+
+      expect(ast).toEqual<AST>({
+        type: "VariableDeclaration",
+        declarator: "const",
+        identifier: { name: "foo", typeAnnotation: "number" },
+        value: {
+          type: "NumericLiteral",
+          value: 1,
         },
       });
     });
@@ -73,7 +87,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "const",
-        variableName: "sum",
+        identifier: { name: "sum" },
         value: {
           type: "SumOperation",
           left: { type: "NumericLiteral", value: 2 },
@@ -88,7 +102,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "const",
-        variableName: "myVar",
+        identifier: { name: "myVar" },
         value: {
           type: "SubOperation",
           left: { type: "NumericLiteral", value: 4 },
@@ -103,7 +117,7 @@ describe("AST Parser", () => {
       expect(ast).toEqual({
         type: "VariableDeclaration",
         declarator: "const",
-        variableName: "myVar",
+        identifier: { name: "myVar" },
         value: {
           type: "MultiplicationOperation",
           left: { type: "NumericLiteral", value: 4 },
@@ -119,7 +133,7 @@ describe("AST Parser", () => {
         expect(ast).toEqual({
           type: "VariableDeclaration",
           declarator: "const",
-          variableName: "foo",
+          identifier: { name: "foo" },
           value: {
             type: "SumOperation",
             left: {
@@ -147,7 +161,7 @@ describe("AST Parser", () => {
         expect(ast).toEqual<VariableDeclaration>({
           type: "VariableDeclaration",
           declarator: "const",
-          variableName: "foo",
+          identifier: { name: "foo" },
           value: {
             type: "SubOperation",
             left: {
@@ -227,13 +241,3 @@ describe("AST Parser", () => {
     });
   });
 });
-
-/**
- *
- * {
- *   type: "VariableDeclaration",
- *   declarator: "const",
- *   variableName: "foo",
- *   value: { type: "NumberLiteral", value: 1 }
- * }
- *  */

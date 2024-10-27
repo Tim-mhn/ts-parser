@@ -19,9 +19,14 @@ type ValueExpression = NumericLiteral | Operation;
 export type VariableDeclaration = {
   type: "VariableDeclaration";
   declarator: string;
-  variableName: string;
+  identifier: {
+    name: string;
+    typeAnnotation?: string;
+  };
   value: ValueExpression;
 };
+
+export type AST = VariableDeclaration;
 export class Parser {
   private tokenizer = new Tokenizer();
 
@@ -168,7 +173,41 @@ export class Parser {
 
     return this.parseOperation(numericLiteral, rest);
   }
-  private parseDeclaration({
+
+  /**
+   *
+   * @param left
+   * @param restOfProgram "= 4 + 5"
+   * @returns
+   */
+  private parseVariableDeclarationRightSide(
+    left: Pick<VariableDeclaration, "identifier" | "declarator">,
+    restOfProgram: string
+  ): VariableDeclaration {
+    const { type, token, rest } = this.tokenizer.getNextToken(restOfProgram);
+
+    if (type !== "Equal") {
+      throw new Error(
+        `Expected '=' character. Received '${restOfProgram}' instead`
+      );
+    }
+
+    const value = this.parseValueExpression(rest);
+
+    return {
+      type: "VariableDeclaration",
+      declarator: left.declarator,
+      identifier: left.identifier,
+      value,
+    };
+  }
+
+  /**
+   *
+   * @param program "foo = 1 + 2"
+   * @returns
+   */
+  private parseVariableDeclarator({
     declarator,
     program,
   }: {
@@ -182,24 +221,38 @@ export class Parser {
         `Expected  a variableName. Received '${program}' instead.`
       );
 
-    const {
-      token: equal,
-      type: equalType,
-      rest: rest2,
-    } = this.tokenizer.getNextToken(rest);
+    const { type: nextType, rest: nextRest } =
+      this.tokenizer.getNextToken(rest);
 
-    if (equalType !== "Equal") {
-      throw new Error(`Expected '=' character. Received '${rest}' instead`);
+    if (nextType === "Column") {
+      const {
+        rest: rest2,
+        token: typeAnnotation,
+        type: typeAnnotationType,
+      } = this.tokenizer.getNextToken(nextRest);
+
+      if (typeAnnotationType !== "variableName") {
+        throw new Error(
+          `Expected a type annotation. Received '${rest}' instead.`
+        );
+      }
+
+      return this.parseVariableDeclarationRightSide(
+        {
+          declarator,
+          identifier: { name: token, typeAnnotation },
+        },
+        rest2
+      );
     }
 
-    const value = this.parseValueExpression(rest2);
-
-    return {
-      type: "VariableDeclaration",
-      declarator,
-      variableName: token,
-      value,
-    };
+    return this.parseVariableDeclarationRightSide(
+      {
+        declarator,
+        identifier: { name: token },
+      },
+      rest
+    );
   }
   parse(program: string) {
     const {
@@ -210,7 +263,7 @@ export class Parser {
 
     if (type !== "declarator") throw new Error("Expected declarator");
 
-    return this.parseDeclaration({
+    return this.parseVariableDeclarator({
       declarator: firstToken,
       program: restOfProgram,
     });
@@ -253,6 +306,10 @@ const matchers = [
   {
     regex: /^(\(([^\(\)]+)\))/,
     type: "ParenthesisGroup",
+  },
+  {
+    regex: /^(:)/,
+    type: "Column",
   },
 ] as const satisfies Array<{
   regex: RegExp;

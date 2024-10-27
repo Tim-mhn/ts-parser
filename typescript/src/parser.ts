@@ -77,6 +77,16 @@ export class Parser {
 
     const right = this.parseValueExpression(nextRest);
 
+    if (
+      operation === "MultiplicationOperation" ||
+      operation === "DivisionOperation"
+    )
+      return this.parsePriorityOperation({
+        leftLiteral: left,
+        type: operation,
+        noPriorityRightValue: right,
+      });
+
     return {
       type: operation,
       left,
@@ -127,13 +137,16 @@ export class Parser {
     );
   }
 
+  private parseParenthesisGroup(program: string, rest: string) {
+    const expression = this.parseValueExpression(program);
+    return this.parseOperation(expression, rest);
+  }
   private parseValueExpression(program: string): ValueExpression {
     const { type, rest, token } = this.tokenizer.getNextToken(program);
 
-    if (type === "ParenthesisGroup") {
-      const expression = this.parseValueExpression(token);
-      return this.parseOperation(expression, rest);
-    }
+    if (type === "ParenthesisGroup")
+      return this.parseParenthesisGroup(token, rest);
+
     // we need to handle cases where we declare a float value starting with + or - (example: "const foo = +3.2" )
     if (
       type !== "NumericLiteral" &&
@@ -153,29 +166,7 @@ export class Parser {
 
     if (!nextRest) return numericLiteral;
 
-    const right = this.parseValueExpression(nextRest);
-
-    if (nextType === "PlusOperator" || nextType === "MinusOperator") {
-      return this.parseOperation(numericLiteral, rest);
-    }
-
-    if (nextType === "MultiplicationOperator") {
-      return this.parsePriorityOperation({
-        leftLiteral: numericLiteral,
-        noPriorityRightValue: right,
-        type: "MultiplicationOperation",
-      });
-    }
-
-    if (nextType === "DivisionOperator") {
-      return this.parsePriorityOperation({
-        leftLiteral: numericLiteral,
-        noPriorityRightValue: right,
-        type: "DivisionOperation",
-      });
-    }
-
-    throw new Error(`Expected a PlusOperator. Received '${nextType}' instead.`);
+    return this.parseOperation(numericLiteral, rest);
   }
   private parseDeclaration({
     declarator,

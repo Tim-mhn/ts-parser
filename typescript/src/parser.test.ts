@@ -204,16 +204,24 @@ describe("AST Parser", () => {
       });
 
       it("parses nested operations with parenthesis", () => {
-        const ast = parser.parse("const foo=(1+2)*3");
+        const ast = parser.parse("const foo=(1.1+2)*(3+4)-5.2");
 
         expect(ast.value).toEqual<VariableDeclaration["value"]>({
-          type: "MultiplicationOperation",
+          type: "SubOperation",
           left: {
-            type: "SumOperation",
-            left: { type: "NumericLiteral", value: 1 },
-            right: { type: "NumericLiteral", value: 2 },
+            type: "MultiplicationOperation",
+            left: {
+              type: "SumOperation",
+              left: { type: "NumericLiteral", value: 1.1 },
+              right: { type: "NumericLiteral", value: 2 },
+            },
+            right: {
+              type: "SumOperation",
+              left: { type: "NumericLiteral", value: 3 },
+              right: { type: "NumericLiteral", value: 4 },
+            },
           },
-          right: { type: "NumericLiteral", value: 3 },
+          right: { type: "NumericLiteral", value: 5.2 },
         });
       });
     });
